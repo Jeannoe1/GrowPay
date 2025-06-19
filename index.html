@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GrowPay</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.png" type="image/png" />
+  <meta name="theme-color" content="#00796B" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; color: #333; }
+    h2 { text-align: center; color: #00796B; }
+    input, textarea, button { font-size: 16px; margin-top: 10px; width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #00796B; color: white; border: none; font-weight: bold; }
+    .entry { padding: 10px; margin: 10px 0; border-radius: 5px; color: white; }
+    .low { background-color: #e53935; }
+    .medium { background-color: #fbc02d; }
+    .good { background-color: #7cb342; }
+    .excellent { background-color: #388e3c; }
+    .total { margin-top: 20px; font-weight: bold; text-align: center; }
+    .chart-bar { height: 20px; margin: 3px 0; background: #ccc; border-radius: 3px; text-align: right; padding-right: 5px; color: white; }
+  </style>
+</head>
+<body>
+  <h2>GrowPay</h2>
+  <input type="number" id="valor" placeholder="Valor do dia (€)" />
+  <textarea id="nota" placeholder="Anotações do dia (opcional)"></textarea>
+  <button onclick="registrar()">Registrar</button>
+  <div id="lista"></div>
+  <div id="fechamento" class="total"></div>
+  <h3 style="margin-top:30px;">Progresso da Semana</h3>
+  <div id="grafico"></div>
+  <audio id="alarme" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
+
+  <script>
+    const diasValidos = ['Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dados = JSON.parse(localStorage.getItem('growpay') || '[]');
+
+    function diaSemana(data) {
+      return new Date(data).toLocaleDateString('en-US', { weekday: 'long' });
+    }
+
+    function registrar() {
+      const valor = parseFloat(document.getElementById('valor').value);
+      const nota = document.getElementById('nota').value;
+      const hoje = new Date().toISOString().split('T')[0];
+      if (!isNaN(valor)) {
+        dados.push({ data: hoje, valor, nota });
+        localStorage.setItem('growpay', JSON.stringify(dados));
+        document.getElementById('valor').value = '';
+        document.getElementById('nota').value = '';
+        renderizar();
+      }
+    }
+
+    function cor(valor) {
+      if (valor < 150) return 'low';
+      if (valor < 200) return 'medium';
+      if (valor < 250) return 'good';
+      return 'excellent';
+    }
+
+    function renderizar() {
+      const lista = document.getElementById('lista');
+      lista.innerHTML = '';
+      let totalSemana = 0;
+      let diasSemana = 0;
+      const grafico = {};
+
+      dados.forEach(entry => {
+        const dia = diaSemana(entry.data);
+        if (diasValidos.includes(dia)) {
+          totalSemana += entry.valor;
+          diasSemana++;
+          grafico[dia] = entry.valor;
+
+          const div = document.createElement('div');
+          div.className = 'entry ' + cor(entry.valor);
+          div.innerHTML = `<strong>${entry.data} (${dia})</strong><br>€${entry.valor.toFixed(2)}<br><em>${entry.nota || ''}</em>`;
+          lista.appendChild(div);
+        }
+      });
+
+      const fechamento = document.getElementById('fechamento');
+      fechamento.innerHTML = `Total da semana: €${totalSemana.toFixed(2)} | Média: €${(totalSemana / (diasSemana || 1)).toFixed(2)}`;
+
+      const graf = document.getElementById('grafico');
+      graf.innerHTML = '';
+      Object.entries(grafico).forEach(([dia, val]) => {
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar ' + cor(val);
+        bar.style.width = (val > 300 ? 100 : val / 3) + '%';
+        bar.textContent = `€${val}`;
+        graf.appendChild(bar);
+      });
+    }
+
+    function agendarAlerta() {
+      const now = new Date();
+      if (now.getHours() === 21 && now.getMinutes() === 0) {
+        document.getElementById('alarme').play();
+      }
+    }
+
+    setInterval(agendarAlerta, 60000);
+    renderizar();
+  </script>
+</body>
+</html>
